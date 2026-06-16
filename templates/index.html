@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pillai Center Chatbot</title>
+    <link rel="stylesheet" href="/static/chatbot.css">
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background: #0a1625;
+            height: 100vh;
+            overflow: hidden;
+            position: relative;
+        }
+
+        /* Night Sky Background */
+        .night-sky {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(to bottom, #0a1625 0%, #111827 100%);
+            z-index: 1;
+        }
+
+        /* Stars */
+        .stars {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image: 
+                radial-gradient(white 1px, transparent 1.5px),
+                radial-gradient(white 1px, transparent 1.5px);
+            background-size: 200px 200px, 280px 280px;
+            background-position: 0 0, 50px 80px;
+            opacity: 0.85;
+            z-index: 2;
+        }
+
+        /* Realistic Full Moon */
+        .moon {
+            position: absolute;
+            top: 70px;
+            right: 110px;
+            width: 105px;
+            height: 105px;
+            background: #f4f1e9;
+            border-radius: 50%;
+            box-shadow: 
+                0 0 25px #f4f1e9,
+                0 0 50px #e8d9a0;
+            z-index: 3;
+        }
+
+        .moon::before {
+            content: '';
+            position: absolute;
+            top: 22px;
+            left: 22px;
+            width: 16px;
+            height: 16px;
+            background: #d4c9a8;
+            border-radius: 50%;
+            box-shadow: 
+                32px 12px 0 #d4c9a8,
+                12px 40px 0 #d4c9a8;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Night Sky + Stars + Moon -->
+    <div class="night-sky"></div>
+    <div class="stars"></div>
+    <div class="moon"></div>
+
+    <!-- Chat Widget -->
+    <script src="/static/chatbot.js"></script>
+
+</body>
+</html>
