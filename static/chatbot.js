@@ -1,4 +1,4 @@
-// ==================== UPDATED CHATBOT.JS WITH END CHAT ====================
+// ==================== FINAL UPDATED CHATBOT.JS ====================
 
 let sessionId = localStorage.getItem("pillai_chat_session_id") || null;
 let userInfo = JSON.parse(localStorage.getItem("pillai_user_info")) || null;
@@ -93,50 +93,41 @@ function initChat() {
         }
     });
 
-    // Close Chat Window
+    // Close Chat
     closeBtn.addEventListener('click', () => {
         chatWindow.style.display = 'none';
         chatBtn.style.display = 'block';
     });
 
-    // Minimize Chat Window
+    // Minimize Chat
     minimizeBtn.addEventListener('click', () => {
         chatWindow.style.display = 'none';
         chatBtn.style.display = 'block';
     });
 
-    // ==================== END CHAT FEATURE ====================
+    // End Chat Button
     endChatBtn.addEventListener('click', async () => {
         if (confirm("Are you sure you want to end this chat?")) {
-            
-            // Call backend to end chat
             try {
                 await fetch("/end-chat", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({ session_id: sessionId })
                 });
-            } catch (e) {
-                console.log("End chat request failed (non-critical)");
-            }
+            } catch (e) {}
 
-            // Clear chat and show thank you message
             messages.innerHTML = "";
             addMessage("bot", "Thank you for chatting with us! Have a great day.");
-
-            // Hide input area
             chatInputArea.style.display = "none";
 
-            // Optional: Close chat window after 3 seconds
             setTimeout(() => {
                 chatWindow.style.display = "none";
                 chatBtn.style.display = "block";
             }, 3000);
         }
     });
-    // ========================================================
 
-    // Registration
+    // ==================== REGISTRATION ====================
     regSubmit.addEventListener('click', () => {
         const name = document.getElementById('reg-name').value.trim();
         const email = document.getElementById('reg-email').value.trim();
@@ -147,21 +138,37 @@ function initChat() {
             return;
         }
 
+        // Save locally
         userInfo = { name, email, phone };
         localStorage.setItem("pillai_user_info", JSON.stringify(userInfo));
 
+        // Hide registration and show chat
         registrationArea.style.display = 'none';
         messages.style.display = 'block';
         chatInputArea.style.display = 'flex';
 
         addMessage("bot", `Thank you ${name}! How can I help you today?`);
 
+        // Send data to MySQL
         fetch("/save-user", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ name, email, phone })
-        }).catch(() => {});
+        })
+        .then(response => response.json())
+        .then(data => {
+            console.log("Server Response:", data);
+            if (data.status === "success") {
+                console.log("✅ Data saved in MySQL successfully");
+            } else {
+                console.log("❌ Failed to save:", data.message);
+            }
+        })
+        .catch(error => {
+            console.log("Error sending data to server:", error);
+        });
     });
+    // ========================================================
 
     function sendMessage() {
         const text = chatInput.value.trim();

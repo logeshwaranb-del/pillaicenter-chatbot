@@ -1,5 +1,6 @@
 """
-app.py - Main FastAPI Application (Updated with End Chat Feature)
+app.py - Main FastAPI Application 
+(Updated with MySQL Database for User Registration)
 """
 import logging
 import os
@@ -42,10 +43,6 @@ class ChatResponse(BaseModel):
 class RefreshResponse(BaseModel):
     status: str
     message: str
-
-
-class EndChatRequest(BaseModel):
-    session_id: Optional[str] = None
 
 
 # ==================== Lifespan ====================
@@ -113,7 +110,7 @@ async def root(request: Request):
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title></title>
+        <title>Pillai Center Assistant</title>
         <link rel="stylesheet" href="/static/chatbot.css">
         <style>
             body {
@@ -125,6 +122,7 @@ async def root(request: Request):
                 position: relative;
             }
 
+            /* Night Sky Background */
             .night-sky {
                 position: absolute;
                 top: 0;
@@ -135,6 +133,7 @@ async def root(request: Request):
                 z-index: 1;
             }
 
+            /* Stars */
             .stars {
                 position: absolute;
                 top: 0;
@@ -143,45 +142,53 @@ async def root(request: Request):
                 height: 100%;
                 background-image: 
                     radial-gradient(white 1px, transparent 1.5px),
-                    radial-gradient(white 1px, transparent 1.5px);
-                background-size: 200px 200px, 280px 280px;
-                background-position: 0 0, 50px 80px;
-                opacity: 0.85;
+                    radial-gradient(white 1.2px, transparent 2px);
+                background-size: 180px 180px, 320px 320px;
+                background-position: 0 0, 40px 60px;
+                opacity: 0.9;
                 z-index: 2;
+                animation: twinkle 4s infinite alternate;
             }
 
+            @keyframes twinkle {
+                0% { opacity: 0.7; }
+                100% { opacity: 1; }
+            }
+
+            /* Realistic Full Moon */
             .moon {
                 position: absolute;
-                top: 70px;
-                right: 110px;
-                width: 105px;
-                height: 105px;
+                top: 60px;
+                right: 80px;
+                width: 110px;
+                height: 110px;
                 background: #f4f1e9;
                 border-radius: 50%;
                 box-shadow: 
-                    0 0 25px #f4f1e9,
-                    0 0 50px #e8d9a0;
+                    0 0 30px #f4f1e9,
+                    0 0 60px #e8d9a0;
                 z-index: 3;
             }
 
             .moon::before {
                 content: '';
                 position: absolute;
-                top: 22px;
-                left: 22px;
-                width: 16px;
-                height: 16px;
+                top: 20px;
+                left: 25px;
+                width: 18px;
+                height: 18px;
                 background: #d4c9a8;
                 border-radius: 50%;
                 box-shadow: 
-                    32px 12px 0 #d4c9a8,
-                    12px 40px 0 #d4c9a8;
+                    35px 15px 0 #d4c9a8,
+                    15px 45px 0 #d4c9a8,
+                    50px 40px 0 #d4c9a8;
             }
         </style>
     </head>
     <body>
 
-        <!-- Night Sky + Moon -->
+        <!-- Night Sky Background -->
         <div class="night-sky"></div>
         <div class="stars"></div>
         <div class="moon"></div>
@@ -230,7 +237,7 @@ async def refresh_data(background_tasks: BackgroundTasks):
     )
 
 
-# ==================== Save User Details ====================
+# ==================== Save User Details in MySQL ====================
 @app.post("/save-user")
 async def save_user(request: Request):
     try:
@@ -242,51 +249,45 @@ async def save_user(request: Request):
         if not name or not email or not phone:
             return {"status": "error", "message": "Name, Email and Phone are required"}
 
-        users_file = Path("data/users.json")
-        users_file.parent.mkdir(parents=True, exist_ok=True)
+        # ==================== MySQL Connection ====================
+        import mysql.connector
 
-        if users_file.exists():
-            with open(users_file, "r", encoding="utf-8") as f:
-                users = json.load(f)
-        else:
-            users = []
+        db = mysql.connector.connect(
+            host="localhost",                  
+            user="root",                       
+            password="BaluMagesh@001",     
+            database="chat_user_data"            
+        )
 
-        users.append({
-            "name": name,
-            "email": email,
-            "phone": phone,
-            "timestamp": datetime.utcnow().isoformat()
-        })
+        cursor = db.cursor()
 
-        with open(users_file, "w", encoding="utf-8") as f:
-            json.dump(users, f, indent=2)
+        sql = "INSERT INTO users (name, email, phone) VALUES (%s, %s, %s)"
+        values = (name, email, phone)
 
-        print(f"✅ User saved successfully: {name} | {email} | {phone}")
-        return {"status": "success", "message": "User saved successfully"}
+        cursor.execute(sql, values)
+        db.commit()
+        cursor.close()
+        db.close()
+
+        print(f"✅ User saved in MySQL: {name} | {email} | {phone}")
+        return {"status": "success", "message": "User saved successfully in MySQL"}
 
     except Exception as e:
-        print(f"❌ Error saving user: {e}")
+        print(f"❌ Error saving user in MySQL: {e}")
         return {"status": "error", "message": str(e)}
 
 
-# ==================== NEW: End Chat Feature ====================
+# ==================== End Chat ====================
 @app.post("/end-chat")
 async def end_chat(request: Request):
     try:
         data = await request.json()
         session_id = data.get("session_id", "unknown")
-
-        # You can add logging or save chat summary here if needed
         print(f"✅ Chat ended for session: {session_id}")
-
-        return {
-            "status": "success",
-            "message": "Chat ended successfully. Thank you for chatting with us!"
-        }
+        return {"status": "success", "message": "Chat ended successfully"}
 
     except Exception as e:
-        print(f"❌ Error ending chat: {e}")
-        return {"status": "error", "message": "Failed to end chat"}
+        return {"status": "error", "message": str(e)}
 
 
 @app.exception_handler(Exception)
