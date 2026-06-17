@@ -255,8 +255,8 @@ async def save_user(request: Request):
         db = mysql.connector.connect(
             host="localhost",                  
             user="root",                       
-            password="BaluMagesh@001",     
-            database="chat_user_data"            
+            password="pillaicenter@001",     
+            database="chatbot_user_data"            
         )
 
         cursor = db.cursor()
