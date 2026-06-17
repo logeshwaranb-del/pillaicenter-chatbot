@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pillai Center Chatbot</title>
+    <title>Pillai Center Assistant</title>
     <link rel="stylesheet" href="/static/chatbot.css">
     <style>
         body {
@@ -15,7 +15,6 @@
             position: relative;
         }
 
-        /* Night Sky Background */
         .night-sky {
             position: absolute;
             top: 0;
@@ -26,7 +25,6 @@
             z-index: 1;
         }
 
-        /* Stars */
         .stars {
             position: absolute;
             top: 0;
@@ -35,51 +33,57 @@
             height: 100%;
             background-image: 
                 radial-gradient(white 1px, transparent 1.5px),
-                radial-gradient(white 1px, transparent 1.5px);
-            background-size: 200px 200px, 280px 280px;
-            background-position: 0 0, 50px 80px;
-            opacity: 0.85;
+                radial-gradient(white 1.2px, transparent 2px);
+            background-size: 180px 180px, 320px 320px;
+            background-position: 0 0, 40px 60px;
+            opacity: 0.9;
             z-index: 2;
+            animation: twinkle 4s infinite alternate;
         }
 
-        /* Realistic Full Moon */
+        @keyframes twinkle {
+            0% { opacity: 0.7; }
+            100% { opacity: 1; }
+        }
+
         .moon {
             position: absolute;
-            top: 70px;
-            right: 110px;
-            width: 105px;
-            height: 105px;
+            top: 60px;
+            right: 80px;
+            width: 110px;
+            height: 110px;
             background: #f4f1e9;
             border-radius: 50%;
             box-shadow: 
-                0 0 25px #f4f1e9,
-                0 0 50px #e8d9a0;
+                0 0 30px #f4f1e9,
+                0 0 60px #e8d9a0;
             z-index: 3;
         }
 
         .moon::before {
             content: '';
             position: absolute;
-            top: 22px;
-            left: 22px;
-            width: 16px;
-            height: 16px;
+            top: 20px;
+            left: 25px;
+            width: 18px;
+            height: 18px;
             background: #d4c9a8;
             border-radius: 50%;
             box-shadow: 
-                32px 12px 0 #d4c9a8,
-                12px 40px 0 #d4c9a8;
+                35px 15px 0 #d4c9a8,
+                15px 45px 0 #d4c9a8,
+                50px 40px 0 #d4c9a8;
         }
     </style>
 </head>
 <body>
 
-    <!-- Night Sky + Stars + Moon -->
+    <!-- Night Sky Background -->
     <div class="night-sky"></div>
     <div class="stars"></div>
     <div class="moon"></div>
 
-    <!-- Chat Widget -->
+    <!-- Chatbot Widget -->
     <script src="/static/chatbot.js"></script>
 
 </body>

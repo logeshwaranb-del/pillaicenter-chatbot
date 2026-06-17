@@ -1,12 +1,15 @@
 """
 app.py - Main FastAPI Application 
-(Updated with MySQL Database for User Registration)
+(Updated with Email OTP Verification Feature)
 """
 import logging
 import os
 import json
+import random
+import smtplib
+from email.mime.text import MIMEText
 from contextlib import asynccontextmanager
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Optional
 
@@ -26,12 +29,13 @@ from vector_store import build_or_load_index as vs_build
 logging.basicConfig(level=getattr(logging, LOG_LEVEL), format=LOG_FORMAT)
 logger = logging.getLogger("app")
 
+# ==================== OTP Storage ====================
+otp_storage = {}   # Temporary storage for OTPs
 
 # ==================== Pydantic Models ====================
 class ChatRequest(BaseModel):
     message: str = Field(..., min_length=2, max_length=2000)
     session_id: Optional[str] = None
-
 
 class ChatResponse(BaseModel):
     answer: str
@@ -39,11 +43,16 @@ class ChatResponse(BaseModel):
     sources: list = []
     error: Optional[str] = None
 
-
 class RefreshResponse(BaseModel):
     status: str
     message: str
 
+class SendOTPRequest(BaseModel):
+    email: str
+
+class VerifyOTPRequest(BaseModel):
+    email: str
+    otp: str
 
 # ==================== Lifespan ====================
 @asynccontextmanager
@@ -122,7 +131,6 @@ async def root(request: Request):
                 position: relative;
             }
 
-            /* Night Sky Background */
             .night-sky {
                 position: absolute;
                 top: 0;
@@ -133,7 +141,6 @@ async def root(request: Request):
                 z-index: 1;
             }
 
-            /* Stars */
             .stars {
                 position: absolute;
                 top: 0;
@@ -147,15 +154,8 @@ async def root(request: Request):
                 background-position: 0 0, 40px 60px;
                 opacity: 0.9;
                 z-index: 2;
-                animation: twinkle 4s infinite alternate;
             }
 
-            @keyframes twinkle {
-                0% { opacity: 0.7; }
-                100% { opacity: 1; }
-            }
-
-            /* Realistic Full Moon */
             .moon {
                 position: absolute;
                 top: 60px;
@@ -188,19 +188,18 @@ async def root(request: Request):
     </head>
     <body>
 
-        <!-- Night Sky Background -->
+        <!-- Night Sky + Moon Background -->
         <div class="night-sky"></div>
         <div class="stars"></div>
         <div class="moon"></div>
 
-        <!-- Chat Widget -->
+        <!-- Chatbot Widget will load here automatically -->
         <script src="/static/chatbot.js"></script>
 
     </body>
     </html>
     """
     return HTMLResponse(content=html_content)
-
 
 @app.get("/health")
 async def health():
@@ -249,7 +248,6 @@ async def save_user(request: Request):
         if not name or not email or not phone:
             return {"status": "error", "message": "Name, Email and Phone are required"}
 
-        # ==================== MySQL Connection ====================
         import mysql.connector
 
         db = mysql.connector.connect(
@@ -285,6 +283,70 @@ async def end_chat(request: Request):
         session_id = data.get("session_id", "unknown")
         print(f"✅ Chat ended for session: {session_id}")
         return {"status": "success", "message": "Chat ended successfully"}
+
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
+
+
+# ==================== NEW: Send OTP ====================
+@app.post("/send-otp")
+async def send_otp(request: Request):
+    try:
+        data = await request.json()
+        email = data.get("email", "").strip().lower()
+
+        if not email:
+            return {"status": "error", "message": "Email is required"}
+
+        # Generate 6-digit OTP
+        otp = str(random.randint(100000, 999999))
+        expiry = datetime.now() + timedelta(seconds=60)
+
+        otp_storage[email] = {"otp": otp, "expiry": expiry}
+
+        # Send Email using Gmail
+        sender_email = "pillaicentertester@gmail.com"          # ← Change this
+        sender_password = "ynub vtwa gkaq toyv"          # ← Change this (Gmail App Password)
+
+        msg = MIMEText(f"Your verification code is: {otp}\n\nThis code will expire in 10 minutes.")
+        msg["Subject"] = "Pillai Center Chatbot - Verification Code"
+        msg["From"] = sender_email
+        msg["To"] = email
+
+        server = smtplib.SMTP("smtp.gmail.com", 587)
+        server.starttls()
+        server.login(sender_email, sender_password)
+        server.sendmail(sender_email, email, msg.as_string())
+        server.quit()
+
+        return {"status": "success", "message": "Verification code sent successfully"}
+
+    except Exception as e:
+        return {"status": "error", "message": f"Failed to send OTP: {str(e)}"}
+
+
+# ==================== NEW: Verify OTP ====================
+@app.post("/verify-otp")
+async def verify_otp(request: Request):
+    try:
+        data = await request.json()
+        email = data.get("email", "").strip().lower()
+        entered_otp = data.get("otp", "").strip()
+
+        if email not in otp_storage:
+            return {"status": "error", "message": "No OTP found. Please request again."}
+
+        stored = otp_storage[email]
+
+        if datetime.now() > stored["expiry"]:
+            del otp_storage[email]
+            return {"status": "error", "message": "OTP expired. Please request a new one."}
+
+        if entered_otp == stored["otp"]:
+            del otp_storage[email]
+            return {"status": "success", "message": "Email verified successfully"}
+        else:
+            return {"status": "error", "message": "Invalid OTP"}
 
     except Exception as e:
         return {"status": "error", "message": str(e)}

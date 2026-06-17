@@ -1,7 +1,8 @@
-// ==================== FINAL UPDATED CHATBOT.JS ====================
+// ==================== FINAL UPDATED CHATBOT.JS (With Email OTP Verification) ====================
 
 let sessionId = localStorage.getItem("pillai_chat_session_id") || null;
 let userInfo = JSON.parse(localStorage.getItem("pillai_user_info")) || null;
+let verifiedEmail = null;
 
 function createChatWidget() {
     const html = `
@@ -9,45 +10,44 @@ function createChatWidget() {
             
             <button id="chat-btn" style="width: 60px; height: 60px; border-radius: 50%; background: #1a365d; color: white; border: none; font-size: 26px; cursor: pointer; box-shadow: 0 4px 12px rgba(0,0,0,0.3);">💬</button>
             
-            <div id="chat-window" style="display: none; position: absolute; bottom: 75px; right: 0; width: 360px; height: 560px; background: white; border-radius: 12px; box-shadow: 0 8px 25px rgba(0,0,0,0.2); flex-direction: column; overflow: hidden; border: 1px solid #ddd;">
+            <div id="chat-window" style="display: none; position: absolute; bottom: 75px; right: 0; width: 360px; height: 580px; background: white; border-radius: 12px; box-shadow: 0 8px 25px rgba(0,0,0,0.2); flex-direction: column; overflow: hidden; border: 1px solid #ddd;">
                 
                 <!-- Header -->
                 <div style="background: #1a365d; color: white; padding: 10px 14px; display: flex; justify-content: space-between; align-items: center;">
                     <span style="font-weight: bold; font-size: 15px;">Pillai Center Assistant</span>
                     
                     <div style="display: flex; align-items: center; gap: 6px;">
-                        
-                        <!-- End Chat Button -->
-                        <button id="end-chat-btn" 
-                                style="background: #e74c3c; color: white; border: none; padding: 5px 10px; border-radius: 6px; cursor: pointer; font-size: 12px; font-weight: bold;">
-                            End Chat
-                        </button>
-                        
-                        <!-- Minimize Button -->
-                        <button id="minimize-btn" 
-                                style="background: none; border: none; color: white; font-size: 20px; cursor: pointer; padding: 0 4px;">
-                            −
-                        </button>
-                        
-                        <!-- Close Button -->
-                        <button id="close-btn" 
-                                style="background: none; border: none; color: white; font-size: 22px; cursor: pointer; padding: 0 4px;">
-                            ×
-                        </button>
+                        <button id="end-chat-btn" style="background: #e74c3c; color: white; border: none; padding: 5px 10px; border-radius: 6px; cursor: pointer; font-size: 12px; font-weight: bold;">End Chat</button>
+                        <button id="minimize-btn" style="background: none; border: none; color: white; font-size: 20px; cursor: pointer; padding: 0 4px;">−</button>
+                        <button id="close-btn" style="background: none; border: none; color: white; font-size: 22px; cursor: pointer; padding: 0 4px;">×</button>
                     </div>
                 </div>
 
-                <!-- Registration Form -->
-                <div id="registration-area" style="padding: 25px; display: none; flex-direction: column; gap: 14px; background: white;">
-                    <h3 style="margin: 0 0 15px 0; text-align: center; color: #1a365d;">Create Your Account</h3>
+                <!-- ==================== EMAIL VERIFICATION + REGISTRATION ==================== -->
+                <div id="email-verification-area" style="padding: 25px; display: flex; flex-direction: column; gap: 14px; background: white;">
+                    <h3 style="margin: 0 0 10px 0; text-align: center; color: #1a365d;">Verify Your Email</h3>
                     
                     <input type="text" id="reg-name" placeholder="Full Name" style="padding: 12px; border: 1px solid #ccc; border-radius: 8px; width: 100%;">
                     <input type="email" id="reg-email" placeholder="Email Address" style="padding: 12px; border: 1px solid #ccc; border-radius: 8px; width: 100%;">
                     <input type="tel" id="reg-phone" placeholder="Mobile Number" style="padding: 12px; border: 1px solid #ccc; border-radius: 8px; width: 100%;">
                     
-                    <button id="reg-submit" style="background: #1a365d; color: white; border: none; padding: 14px; border-radius: 8px; cursor: pointer; font-size: 16px; margin-top: 10px;">
-                        Register & Start Chat
+                    <button id="send-otp-btn" style="background: #1a365d; color: white; border: none; padding: 14px; border-radius: 8px; cursor: pointer; font-size: 16px;">
+                        Send Verification Code
                     </button>
+
+                    <!-- OTP Section -->
+                    <div id="otp-section" style="display: none; flex-direction: column; gap: 10px; margin-top: 10px;">
+                        <input type="text" id="otp-input" placeholder="Enter 6-digit Code" 
+                               style="padding: 12px; border: 1px solid #ccc; border-radius: 8px; width: 100%; text-align: center; letter-spacing: 4px;">
+                        
+                        <button id="verify-otp-btn" style="background: #27ae60; color: white; border: none; padding: 14px; border-radius: 8px; cursor: pointer; font-size: 16px;">
+                            Verify Code
+                        </button>
+                        
+                        <button id="resend-otp-btn" style="background: #f39c12; color: white; border: none; padding: 10px; border-radius: 8px; cursor: pointer; font-size: 14px;">
+                            Resend Code
+                        </button>
+                    </div>
                 </div>
 
                 <!-- Chat Messages -->
@@ -72,40 +72,50 @@ function initChat() {
     const closeBtn = document.getElementById('close-btn');
     const minimizeBtn = document.getElementById('minimize-btn');
     const endChatBtn = document.getElementById('end-chat-btn');
-    const registrationArea = document.getElementById('registration-area');
+    const emailVerificationArea = document.getElementById('email-verification-area');
     const messages = document.getElementById('chat-messages');
     const chatInputArea = document.getElementById('chat-input-area');
     const sendBtn = document.getElementById('send-btn');
     const chatInput = document.getElementById('chat-input');
-    const regSubmit = document.getElementById('reg-submit');
 
-    // Open Chat
+    // OTP Elements
+    const sendOtpBtn = document.getElementById('send-otp-btn');
+    const otpSection = document.getElementById('otp-section');
+    const verifyOtpBtn = document.getElementById('verify-otp-btn');
+    const resendOtpBtn = document.getElementById('resend-otp-btn');
+    const regName = document.getElementById('reg-name');
+    const regEmail = document.getElementById('reg-email');
+    const regPhone = document.getElementById('reg-phone');
+    const otpInput = document.getElementById('otp-input');
+
+    // Open Chat Button
     chatBtn.addEventListener('click', () => {
         chatWindow.style.display = 'flex';
         chatBtn.style.display = 'none';
 
-        if (!userInfo) {
-            registrationArea.style.display = 'flex';
+        if (!verifiedEmail) {
+            emailVerificationArea.style.display = 'flex';
+            messages.style.display = 'none';
+            chatInputArea.style.display = 'none';
         } else {
+            emailVerificationArea.style.display = 'none';
             messages.style.display = 'block';
             chatInputArea.style.display = 'flex';
-            addMessage("bot", `Welcome back, ${userInfo.name}! How can I help you?`);
         }
     });
 
-    // Close Chat
+    // Close & Minimize
     closeBtn.addEventListener('click', () => {
         chatWindow.style.display = 'none';
         chatBtn.style.display = 'block';
     });
 
-    // Minimize Chat
     minimizeBtn.addEventListener('click', () => {
         chatWindow.style.display = 'none';
         chatBtn.style.display = 'block';
     });
 
-    // End Chat Button
+    // End Chat
     endChatBtn.addEventListener('click', async () => {
         if (confirm("Are you sure you want to end this chat?")) {
             try {
@@ -127,48 +137,102 @@ function initChat() {
         }
     });
 
-    // ==================== REGISTRATION ====================
-    regSubmit.addEventListener('click', () => {
-        const name = document.getElementById('reg-name').value.trim();
-        const email = document.getElementById('reg-email').value.trim();
-        const phone = document.getElementById('reg-phone').value.trim();
+    // ==================== SEND OTP ====================
+    sendOtpBtn.addEventListener('click', async () => {
+        const name = regName.value.trim();
+        const email = regEmail.value.trim();
+        const phone = regPhone.value.trim();
 
         if (!name || !email || !phone) {
-            alert("Please fill Name, Email and Phone Number");
+            alert("Please fill Name, Email and Mobile Number");
             return;
         }
 
-        // Save locally
-        userInfo = { name, email, phone };
-        localStorage.setItem("pillai_user_info", JSON.stringify(userInfo));
+        sendOtpBtn.innerText = "Sending...";
+        sendOtpBtn.disabled = true;
 
-        // Hide registration and show chat
-        registrationArea.style.display = 'none';
-        messages.style.display = 'block';
-        chatInputArea.style.display = 'flex';
+        try {
+            const res = await fetch("/send-otp", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ email: email })
+            });
 
-        addMessage("bot", `Thank you ${name}! How can I help you today?`);
+            const data = await res.json();
 
-        // Send data to MySQL
-        fetch("/save-user", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ name, email, phone })
-        })
-        .then(response => response.json())
-        .then(data => {
-            console.log("Server Response:", data);
             if (data.status === "success") {
-                console.log("✅ Data saved in MySQL successfully");
+                alert("Verification code sent to your email!");
+                otpSection.style.display = "flex";
+                sendOtpBtn.style.display = "none";
+                
+                // Store user data temporarily
+                window.tempUserData = { name, email, phone };
             } else {
-                console.log("❌ Failed to save:", data.message);
+                alert(data.message || "Failed to send OTP");
             }
-        })
-        .catch(error => {
-            console.log("Error sending data to server:", error);
-        });
+        } catch (error) {
+            alert("Error sending OTP");
+        }
+
+        sendOtpBtn.innerText = "Send Verification Code";
+        sendOtpBtn.disabled = false;
     });
-    // ========================================================
+
+    // ==================== VERIFY OTP ====================
+    verifyOtpBtn.addEventListener('click', async () => {
+        const email = regEmail.value.trim();
+        const otp = otpInput.value.trim();
+
+        if (!otp) {
+            alert("Please enter the verification code");
+            return;
+        }
+
+        try {
+            const res = await fetch("/verify-otp", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ email: email, otp: otp })
+            });
+
+            const data = await res.json();
+
+            if (data.status === "success") {
+                verifiedEmail = email;
+                alert("Email verified successfully!");
+
+                // Hide verification section
+                emailVerificationArea.style.display = "none";
+
+                // Save user data
+                const userData = window.tempUserData;
+                if (userData) {
+                    await fetch("/save-user", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify(userData)
+                    });
+                }
+
+                // Start Chat
+                messages.style.display = 'block';
+                chatInputArea.style.display = 'flex';
+                addMessage("bot", `Thank you ${userData.name}! How can I help you today?`);
+
+            } else {
+                alert(data.message || "Invalid verification code");
+            }
+        } catch (error) {
+            alert("Error verifying code");
+        }
+    });
+
+    // Resend OTP
+    resendOtpBtn.addEventListener('click', () => {
+        otpSection.style.display = "none";
+        sendOtpBtn.style.display = "block";
+        otpInput.value = "";
+    });
 
     function sendMessage() {
         const text = chatInput.value.trim();
@@ -207,17 +271,31 @@ function initChat() {
         let html = text;
 
         if (role === "bot" && sources && sources.length > 0 && !text.toLowerCase().includes("sorry")) {
-            const source = sources[0];
-            if (source.url) {
-                html += `<br><br><small style="color:#1e40af; font-size:12px;">
-                    📄 <a href="${source.url}" target="_blank" style="color:#1e40af; text-decoration:none;">Read full page</a>
-                </small>`;
+            const lastUserMsg = getLastUserMessage().toLowerCase();
+            const isInformational = lastUserMsg.includes("what") || lastUserMsg.includes("how") || lastUserMsg.includes("tell me") || lastUserMsg.includes("about") || lastUserMsg.includes("details");
+            const isGeneralSupport = text.toLowerCase().includes("contact") || text.toLowerCase().includes("support") || text.toLowerCase().includes("reach");
+
+            if (isInformational && !isGeneralSupport) {
+                const source = sources[0];
+                if (source.url) {
+                    html += `<br><br><a href="${source.url}" target="_blank" style="display:inline-block; background:#1e40af; color:white; padding:8px 16px; border-radius:6px; text-decoration:none; font-size:13px; font-weight:bold;">📄 Read full page</a>`;
+                }
             }
         }
 
         msg.innerHTML = html;
         messages.appendChild(msg);
         messages.scrollTop = messages.scrollHeight;
+    }
+
+    function getLastUserMessage() {
+        const allMessages = messages.querySelectorAll("div");
+        for (let i = allMessages.length - 1; i >= 0; i--) {
+            if (allMessages[i].style.background === "rgb(26, 54, 93)") {
+                return allMessages[i].textContent || "";
+            }
+        }
+        return "";
     }
 }
 
